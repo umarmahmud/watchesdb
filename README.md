@@ -1,4 +1,3 @@
-## Welcome to WatchesDB
+## A FastAPI template
 
-WatchesDB is an API that features data about watches from around the world.
 

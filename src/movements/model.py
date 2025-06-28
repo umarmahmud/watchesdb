@@ -1,10 +1,10 @@
-import enum
+from enum import Enum
 
 from pydantic import BaseModel
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-class MovementType(enum.Enum):
+class MovementType(Enum):
     automatic = "automatic"
     manual = "manual"
     quartz = "quartz"
