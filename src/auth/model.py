@@ -11,9 +11,16 @@ class UserTable(Base):
 
     username: Mapped[str] = mapped_column(primary_key=True)
     pwd: Mapped[str]
+    admin_user: Mapped[bool]
 
-# pydantic model
+
+# pydantic models
 class User(BaseModel):
     username: str
     pwd: str
+    admin_user: bool
 
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str

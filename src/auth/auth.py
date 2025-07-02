@@ -1,19 +1,32 @@
+import os
+from dotenv import load_dotenv
 from typing import Annotated
-from fastapi import APIRouter, Depends
+from datetime import datetime, timedelta, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
+import jwt
+from jwt.exceptions import InvalidTokenError
+
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from .model import UserTable, User
+from .model import UserTable, User, Token
+from db import get_db
 
-router = APIRouter()
+load_dotenv()
 
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 password_context = CryptContext(schemes="bcrypt", bcrypt__rounds=12)
 
+# used for encoding and decoding jwt tokens
+secret_key = os.getenv("SECRET")
+algorithm = "HS256"
+token_expire = 10
+
+router = APIRouter()
 
 def find_user(db_session, username: User):
     stmt = select(UserTable).where(UserTable.username == username)
@@ -29,21 +42,64 @@ def verify_password(password, hashed_password):
     return password_context.verify(password, hashed_password)
     
 
-def authenticate_user(username, password):
-    user = find_user(username)
+def authenticate_user(db_session, username, password):
+    user = find_user(db_session, username)
     if not user:
-        return "User not found"
+        return False
     if not verify_password(password, user.pwd):
-        return "Not authenticated"
+        return False
     return user
 
 
-@router.post("/token")
-async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
-    user = find_user(form_data.username)
-    if not user:
-        return "Incorrect username or password"
-    if not verify_password(form_data.username, user.pwd):
-        return "Incorrect username or password"
+def create_token(user: User):
+    to_encode = {}
+    to_encode.update({"sub": user.username})
+    expire = datetime.now(timezone.utc) + timedelta(minutes=token_expire)
+    to_encode.update({"exp": expire})
+    if user.admin_user:
+        to_encode.update({"roles": ["base", "admin"]})
+    else:
+        to_encode.update({"roles": ["base"]})
+    encoded_jwt = jwt.encode(to_encode, secret_key, algorithm=algorithm)
+    return encoded_jwt
 
-    return {"access_token": user.username, "token_type": "bearer"}
+
+def get_base_user(db_session: Annotated[Session, Depends(get_db)], token: Annotated[str, Depends(oauth2_scheme)]):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, secret_key, algorithms=[algorithm])
+        username = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except InvalidTokenError:
+        raise credentials_exception
+    user = find_user(db_session, username)
+    if user is None:
+        raise credentials_exception
+    return user
+
+
+def get_admin_user(user: Annotated[User, Depends(get_base_user)]):
+    if not user.admin_user:
+        raise HTTPException(status_code=401, detail="Not admin user")
+    else:
+        return user
+
+
+# authenticates user, then creates a token based on supplying the correct username and password
+@router.post("/login", response_model=Token)
+def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db_session: Annotated[Session, Depends(get_db)]):
+    # authenticate
+    user = authenticate_user(db_session, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token = create_token(user=user)
+    return Token(access_token=access_token, token_type="Bearer")
