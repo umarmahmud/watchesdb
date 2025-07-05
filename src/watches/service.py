@@ -2,7 +2,7 @@ import logging
 from sqlalchemy import select, insert
 
 from .model import WatchTable, WatchCreate
-from exceptions import NotFoundError
+from ..exceptions import NotFoundError
 
 
 def get_all(db_session):

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
-from watches.router import router as watch_router
-from manufacturers.router import router as manufacturer_router
-from movements.router import router as movement_router
+from .watches.router import router as watch_router
+from .manufacturers.router import router as manufacturer_router
+from .movements.router import router as movement_router
 from .auth.auth import router as auth_router
 from .logger import configure_logging
 

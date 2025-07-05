@@ -3,10 +3,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from typing import Annotated, List
 
-from db import get_db
+from ..db import get_db
 from .model import Movement
 from .service import get_all, get_one, create
-from exceptions import NotFoundError
+from ..exceptions import NotFoundError
 
 router = APIRouter()
 
