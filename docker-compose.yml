@@ -1,5 +1,5 @@
 services:
-  web:
+  web-prod:
     build:
       context: .
       dockerfile: Dockerfile
@@ -11,7 +11,23 @@ services:
       replicas: 1
       restart_policy:
         condition: on-failure
-
+    profiles:
+      - prod
+  
+  # dev environment with live-reload
+  web-dev:
+    build:
+      context: .
+      dockerfile: dev.Dockerfile
+    volumes:
+      - ./:/app
+    ports:
+      - "8000:80"
+    depends_on:
+      - db
+    profiles:
+      - dev
+  
   db:
     image: postgres:17
     environment:
@@ -24,6 +40,9 @@ services:
       replicas: 1
       restart_policy:
         condition: on-failure
+    profiles:
+      - dev
+      - prod
 
 volumes:
   pgdata:
