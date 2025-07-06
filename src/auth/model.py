@@ -15,9 +15,16 @@ class UserTable(Base):
 
 
 # pydantic models
-class User(BaseModel):
+class UserCreate(BaseModel):
     username: str
     password: str
+
+
+    class Config:
+        extra = "forbid"
+
+
+class User(UserCreate):
     is_admin: bool
 
 

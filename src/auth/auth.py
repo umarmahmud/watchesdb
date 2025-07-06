@@ -13,7 +13,7 @@ from jwt.exceptions import InvalidTokenError
 from sqlalchemy import select, insert
 from sqlalchemy.orm import Session
 
-from .model import UserTable, User, AdminUser, Token
+from .model import UserTable, User, AdminUser, Token, UserCreate
 from ..db import get_db
 
 load_dotenv()
@@ -33,7 +33,7 @@ audience = ""
 
 router = APIRouter()
 
-def find_user(db_session, username):
+def find_user(db_session, username) -> User:
     stmt = select(UserTable).where(UserTable.username == username)
     result = db_session.execute(statement=stmt)
     user = result.scalars().first()
@@ -51,7 +51,7 @@ def get_password_hash(password):
     return password_context.hash(password)
     
 
-def authenticate_user(db_session, username, password):
+def authenticate_user(db_session, username, password) -> User:
     user = find_user(db_session, username)
     if not user:
         return False
@@ -60,7 +60,7 @@ def authenticate_user(db_session, username, password):
     return user
 
 
-def create_token(user):
+def create_token(user: User):
     to_encode = {}
     to_encode.update({"iss": issuer})
     to_encode.update({"aud": audience})
@@ -123,15 +123,15 @@ def login(db_session: Annotated[Session, Depends(get_db)], form_data: Annotated[
 
 
 @router.post("/signup")
-def sign_up(db_session: Annotated[Session, Depends(get_db)], form_data: Annotated[OAuth2PasswordRequestForm, Depends()], response: Response):
-    user = find_user(db_session, form_data.username)
-    if user:
+def sign_up(db_session: Annotated[Session, Depends(get_db)], user: UserCreate, response: Response):
+    existing_user = find_user(db_session, user.username)
+    if existing_user:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="User already exists"
         )
-    username = form_data.username
-    password = get_password_hash(form_data.password)
+    username = user.username
+    password = get_password_hash(user.password)
     stmt = insert(UserTable).values(
         username=username,
         password=password,
