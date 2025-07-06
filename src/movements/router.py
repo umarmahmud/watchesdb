@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from typing import Annotated, List
@@ -27,9 +27,10 @@ def get_movement(db_session: Annotated[Session, Depends(get_db)], movement: str)
 
 
 @router.post("/movements")
-def create_movement(db_session: Annotated[Session, Depends(get_db)], movement: Movement) -> Movement:
+def create_movement(db_session: Annotated[Session, Depends(get_db)], movement: Movement, response: Response) -> Movement:
     try:
         create(db_session, movement)
     except IntegrityError as e:
         raise HTTPException(status_code=409, detail=e.args)
+    response.status_code = status.HTTP_201_CREATED
     return movement

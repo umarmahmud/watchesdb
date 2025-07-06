@@ -24,6 +24,14 @@ class WatchTable(Base):
     image_path: Mapped[str]
 
 
+class FavoriteWatchTable(Base):
+    __tablename__ = 'favorites'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(ForeignKey("users.username"))
+    watch_id: Mapped[int] = mapped_column(ForeignKey("watches.watch_id"))
+
+
 # pydantic models
 class WatchCreate(BaseModel):
     manufacturer: str
@@ -41,3 +49,12 @@ class WatchCreate(BaseModel):
 
 class Watch(WatchCreate):
     watch_id: int
+
+
+class FavoriteWatch(BaseModel):
+    watch_id: int
+
+
+class FavoriteWatchGet(BaseModel):
+    manufacturer: str
+    model: str

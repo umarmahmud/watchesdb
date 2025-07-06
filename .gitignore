@@ -3,4 +3,4 @@ __pycache__/
 .env
 .python-version
 
-.sql
+*.sql
