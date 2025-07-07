@@ -1,5 +1,6 @@
 import logging
 from sqlalchemy import select, insert, delete, and_
+from sqlalchemy.orm import aliased
 
 from .model import WatchTable, WatchCreate, FavoriteWatchTable
 from ..exceptions import NotFoundError
@@ -9,6 +10,24 @@ def get_all(db_session):
     stmt = select(WatchTable)
     result = db_session.execute(stmt)
     return result.scalars().all()
+
+
+# filter watches on: manufacturer, case_material, case_diameter, crystal
+def filter_watches(db_session, data):
+    data_dict = {k: data.getlist(k) for k in data.keys()}
+    subqueries = []
+    for field, values in data_dict.items():
+        subqueries.append(select(WatchTable).where(getattr(WatchTable, field).in_(values)).subquery())
+    # alias each subquery so we can refer to them separately
+    aliases = [aliased(WatchTable, subq) for subq in subqueries]
+    # start building the statement from the first alias
+    base_alias = aliases[0]
+    stmt = select(base_alias)
+    # join all remaining aliases on `watch_id`
+    for alias in aliases[1:]:
+        stmt = stmt.join(alias, alias.watch_id == base_alias.watch_id)
+    results = db_session.execute(stmt).scalars().all()
+    return results
 
 
 # for any given user, we want manufacturer and model of favorited watches, not rows from 'favorites' table

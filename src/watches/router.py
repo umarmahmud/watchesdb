@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from typing import Annotated, List
 
 from ..db import get_db
-from .model import WatchCreate, Watch, FavoriteWatch, FavoriteWatchGet
-from .service import get_all, get_one, create, get_all_favorites, toggle_favorites
+from .model import WatchCreate, Watch, FavoriteWatch, FavoriteWatchGet, FilterWatchQueryParams
+from .service import get_all, get_one, create, get_all_favorites, toggle_favorites, filter_watches
 from ..exceptions import NotFoundError
 from ..auth.model import User
 from ..auth.auth import get_current_user
@@ -17,6 +18,17 @@ router = APIRouter()
 def get_all_watches(db_session: Annotated[Session, Depends(get_db)]) -> List[Watch]:
     watches = get_all(db_session)
     return watches
+
+
+# filter watches on: manufacturer, case_material, case_diameter, crystal
+@router.get("/watches/filter")
+def get_filtered_watches(db_session: Annotated[Session, Depends(get_db)], request: Request):
+    try:
+        FilterWatchQueryParams(**request.query_params)
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=e.errors())
+    res = filter_watches(db_session, request.query_params)
+    return res
 
 
 @router.get("/watches/favorites")

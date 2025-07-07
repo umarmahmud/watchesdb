@@ -58,3 +58,14 @@ class FavoriteWatch(BaseModel):
 class FavoriteWatchGet(BaseModel):
     manufacturer: str
     model: str
+
+
+class FilterWatchQueryParams(BaseModel):
+    manufacturer: str | None = None
+    case_material: str | None = None
+    case_diameter: int | None = None
+    crystal: str | None = None
+
+
+    class Config:
+        extra = "forbid"
