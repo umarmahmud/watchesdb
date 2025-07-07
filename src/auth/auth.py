@@ -4,8 +4,8 @@ from typing import Annotated
 from datetime import datetime, timedelta, timezone
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi import APIRouter, Depends, HTTPException, Response, status, Security
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, SecurityScopes
 from passlib.context import CryptContext
 import jwt
 from jwt.exceptions import InvalidTokenError
@@ -13,12 +13,15 @@ from jwt.exceptions import InvalidTokenError
 from sqlalchemy import select, insert
 from sqlalchemy.orm import Session
 
-from .model import UserTable, User, AdminUser, Token, UserCreate
+from .model import UserTable, User, Token, UserCreate
 from ..db import get_db
 
 load_dotenv()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="login",
+    scopes={"standard": "read access", "admin": "write access"}
+)
 
 password_context = CryptContext(schemes="bcrypt", bcrypt__rounds=12)
 
@@ -71,15 +74,19 @@ def create_token(user: User):
     to_encode.update({"exp": expire})
     to_encode.update({"sub": user.username})
     if user.is_admin:
-        to_encode.update({"roles": ["standard", "admin"]})
+        to_encode.update({"scopes": ["admin", "standard"]})
     else:
-        to_encode.update({"roles": ["standard"]})
+        to_encode.update({"scopes": ["standard"]})
     encoded_jwt = jwt.encode(to_encode, secret_key, algorithm=algorithm)
     logging.info("TOKEN ISSUED")
     return encoded_jwt
 
 
-def get_current_user(db_session: Annotated[Session, Depends(get_db)], token: Annotated[str, Depends(oauth2_scheme)]):
+def get_current_user(
+    db_session: Annotated[Session, Depends(get_db)],
+    token: Annotated[str, Depends(oauth2_scheme)],
+    security_scopes: SecurityScopes
+) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -88,6 +95,7 @@ def get_current_user(db_session: Annotated[Session, Depends(get_db)], token: Ann
     try:
         payload = jwt.decode(token, secret_key, algorithms=[algorithm])
         username = payload.get("sub")
+        token_scopes = payload.get("scopes", [])
         if username is None:
             raise credentials_exception
     except InvalidTokenError:
@@ -95,16 +103,9 @@ def get_current_user(db_session: Annotated[Session, Depends(get_db)], token: Ann
     user = find_user(db_session, username)
     if user is None:
         raise credentials_exception
-    if "admin" in payload.get("roles"):
-        return AdminUser(username=user.username, password=user.password, is_admin=user.is_admin)
+    if not any(scope in token_scopes for scope in security_scopes.scopes):
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
     return user
-
-
-def check_for_admin(user: Annotated[User, Depends(get_current_user)]):
-    if type(user) is not AdminUser:
-        raise HTTPException(status_code=401, detail="Not admin user")
-    else:
-        return user
 
 
 # authenticates user, then creates a token based on supplying the correct username and password

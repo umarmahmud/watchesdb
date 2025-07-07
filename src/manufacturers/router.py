@@ -1,12 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status, Security
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from typing import Annotated, List
+import logging
+from datetime import datetime, timezone
 
 from ..db import get_db
 from .model import Manufacturer
 from .service import get_all, get_one, create
 from ..exceptions import NotFoundError
+from ..auth.model import User
+from ..auth.auth import get_current_user
 
 router = APIRouter()
 
@@ -27,10 +31,16 @@ def get_manufacturer(db_session: Annotated[Session, Depends(get_db)], manufactur
 
 
 @router.post("/manufacturers")
-def create_manufacturer(db_session: Annotated[Session, Depends(get_db)], manufacturer: Manufacturer, response: Response) -> Manufacturer:
+def create_manufacturer(
+    db_session: Annotated[Session, Depends(get_db)],
+    manufacturer: Manufacturer,
+    response: Response,
+    user: User = Security(get_current_user, scopes=["admin"])
+) -> Manufacturer:
     try:
         create(db_session, manufacturer)
     except IntegrityError as e:
         raise HTTPException(status_code=409, detail=e.args)
+    logging.info(f"Created by admin {user.username} at {datetime.now(timezone.utc)}")
     response.status_code = status.HTTP_201_CREATED
     return manufacturer

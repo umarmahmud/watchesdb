@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status, Security
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from typing import Annotated, List
+import logging
+from datetime import datetime, timezone
 
 from ..db import get_db
 from .model import WatchCreate, Watch, FavoriteWatch, FavoriteWatchGet, FilterWatchQueryParams
@@ -20,9 +22,8 @@ def get_all_watches(db_session: Annotated[Session, Depends(get_db)]) -> List[Wat
     return watches
 
 
-# filter watches on: manufacturer, case_material, case_diameter, crystal
 @router.get("/watches/filter")
-def get_filtered_watches(db_session: Annotated[Session, Depends(get_db)], request: Request):
+def get_filtered_watches(db_session: Annotated[Session, Depends(get_db)], request: Request) -> List[Watch]:
     try:
         FilterWatchQueryParams(**request.query_params)
     except ValidationError as e:
@@ -32,7 +33,10 @@ def get_filtered_watches(db_session: Annotated[Session, Depends(get_db)], reques
 
 
 @router.get("/watches/favorites")
-def get_favorites(db_session: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(get_current_user)]) -> List[FavoriteWatchGet]:
+def get_favorites(
+    db_session: Annotated[Session, Depends(get_db)],
+    user: User = Security(get_current_user, scopes=["standard", "admin"])
+) -> List[FavoriteWatchGet]:
     favorites = get_all_favorites(db_session, user.username)
     return favorites
 
@@ -47,7 +51,12 @@ def get_watch(db_session: Annotated[Session, Depends(get_db)], id: int) -> Watch
 
 
 @router.post("/watches/favorites")
-def set_favorites(db_session: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(get_current_user)], favorite: FavoriteWatch, response: Response):
+def set_favorites(
+    db_session: Annotated[Session, Depends(get_db)],
+    favorite: FavoriteWatch,
+    response: Response,
+    user: User = Security(get_current_user, scopes=["standard", "admin"]),
+) -> FavoriteWatch:
     try:
         toggle_favorites(db_session, user.username, favorite)
     except IntegrityError as e:
@@ -57,10 +66,16 @@ def set_favorites(db_session: Annotated[Session, Depends(get_db)], user: Annotat
 
 
 @router.post("/watches")
-def create_watch(db_session: Annotated[Session, Depends(get_db)], watch: WatchCreate, response: Response) -> WatchCreate:
+def create_watch(
+    db_session: Annotated[Session, Depends(get_db)],
+    watch: WatchCreate,
+    response: Response,
+    user: User = Security(get_current_user, scopes=["admin"])
+) -> WatchCreate:
     try:
         create(db_session, watch)
     except IntegrityError as e:
         raise HTTPException(status_code=409, detail=e.args)
+    logging.info(f"Created by admin {user.username} at {datetime.now(timezone.utc)}")
     response.status_code = status.HTTP_201_CREATED
     return watch

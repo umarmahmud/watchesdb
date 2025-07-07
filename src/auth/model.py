@@ -28,10 +28,6 @@ class User(UserCreate):
     is_admin: bool
 
 
-class AdminUser(User):
-    pass
-
-
 class Token(BaseModel):
     access_token: str
     token_type: str
