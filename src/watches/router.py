@@ -17,48 +17,48 @@ router = APIRouter()
 
 
 @router.get("/watches")
-def get_all_watches(db_session: Annotated[Session, Depends(get_db)]) -> List[Watch]:
-    watches = get_all(db_session)
+async def get_all_watches(db_session: Annotated[Session, Depends(get_db)]) -> List[Watch]:
+    watches = await get_all(db_session)
     return watches
 
 
 @router.get("/watches/filter")
-def get_filtered_watches(db_session: Annotated[Session, Depends(get_db)], request: Request) -> List[Watch]:
+async def get_filtered_watches(db_session: Annotated[Session, Depends(get_db)], request: Request) -> List[Watch]:
     try:
         FilterWatchQueryParams(**request.query_params)
     except ValidationError as e:
         raise HTTPException(status_code=422, detail=e.errors())
-    res = filter_watches(db_session, request.query_params)
+    res = await filter_watches(db_session, request.query_params)
     return res
 
 
 @router.get("/watches/favorites")
-def get_favorites(
+async def get_favorites(
     db_session: Annotated[Session, Depends(get_db)],
     user: User = Security(get_current_user, scopes=["standard", "admin"])
 ) -> List[FavoriteWatchGet]:
-    favorites = get_all_favorites(db_session, user.username)
+    favorites = await get_all_favorites(db_session, user.username)
     return favorites
 
 
 @router.get("/watches/{id}")
-def get_watch(db_session: Annotated[Session, Depends(get_db)], id: int) -> Watch:
+async def get_watch(db_session: Annotated[Session, Depends(get_db)], id: int) -> Watch:
     try:
-        watch = get_one(db_session, id)
+        watch = await get_one(db_session, id)
         return watch
     except NotFoundError as e:
         raise HTTPException(status_code=404, detail=e.args)
 
 
 @router.post("/watches/favorites")
-def set_favorites(
+async def set_favorites(
     db_session: Annotated[Session, Depends(get_db)],
     favorite: FavoriteWatch,
     response: Response,
     user: User = Security(get_current_user, scopes=["standard", "admin"]),
 ) -> FavoriteWatch:
     try:
-        toggle_favorites(db_session, user.username, favorite)
+        await toggle_favorites(db_session, user.username, favorite)
     except IntegrityError as e:
         raise HTTPException(status_code=409, detail=e.args)
     response.status_code = status.HTTP_201_CREATED
@@ -66,14 +66,14 @@ def set_favorites(
 
 
 @router.post("/watches")
-def create_watch(
+async def create_watch(
     db_session: Annotated[Session, Depends(get_db)],
     watch: WatchCreate,
     response: Response,
     user: User = Security(get_current_user, scopes=["admin"])
 ) -> WatchCreate:
     try:
-        create(db_session, watch)
+        await create(db_session, watch)
     except IntegrityError as e:
         raise HTTPException(status_code=409, detail=e.args)
     logging.info(f"Created by admin {user.username} at {datetime.now(timezone.utc)}")

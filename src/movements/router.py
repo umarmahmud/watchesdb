@@ -16,29 +16,29 @@ router = APIRouter()
 
 
 @router.get("/movements")
-def get_all_movements(db_session: Annotated[Session, Depends(get_db)]) -> List[Movement]:
-    watches = get_all(db_session)
+async def get_all_movements(db_session: Annotated[Session, Depends(get_db)]) -> List[Movement]:
+    watches = await get_all(db_session)
     return watches
 
 
 @router.get("/movements/{movement}")
-def get_movement(db_session: Annotated[Session, Depends(get_db)], movement: str) -> Movement:
+async def get_movement(db_session: Annotated[Session, Depends(get_db)], movement: str) -> Movement:
     try:
-        m = get_one(db_session, movement)
+        m = await get_one(db_session, movement)
         return m
     except NotFoundError as e:
         raise HTTPException(status_code=404, detail=e.args)
 
 
 @router.post("/movements")
-def create_movement(
+async def create_movement(
     db_session: Annotated[Session, Depends(get_db)],
     movement: Movement,
     response: Response,
     user: User = Security(get_current_user, scopes=["admin"])
 ) -> Movement:
     try:
-        create(db_session, movement)
+        await create(db_session, movement)
     except IntegrityError as e:
         raise HTTPException(status_code=409, detail=e.args)
     logging.info(f"Created by admin {user.username} at {datetime.now(timezone.utc)}")

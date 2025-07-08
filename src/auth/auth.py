@@ -12,6 +12,7 @@ from jwt.exceptions import InvalidTokenError
 
 from sqlalchemy import select, insert
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from .model import UserTable, User, Token, UserCreate
 from ..db import get_db
@@ -28,7 +29,7 @@ password_context = CryptContext(schemes="bcrypt", bcrypt__rounds=12)
 # used for encoding and decoding jwt tokens
 secret_key = os.getenv("SECRET")
 algorithm = "HS256"
-token_expire_time = 15
+token_expire_time = 60
 
 # jwt claims
 issuer = ""
@@ -36,9 +37,9 @@ audience = ""
 
 router = APIRouter()
 
-def find_user(db_session, username) -> User:
+async def find_user(db_session, username) -> User:
     stmt = select(UserTable).where(UserTable.username == username)
-    result = db_session.execute(statement=stmt)
+    result = await db_session.execute(statement=stmt)
     user = result.scalars().first()
     if user:
         return user
@@ -54,11 +55,12 @@ def get_password_hash(password):
     return password_context.hash(password)
     
 
-def authenticate_user(db_session, username, password) -> User:
-    user = find_user(db_session, username)
+async def authenticate_user(db_session, username, password) -> User:
+    user = await find_user(db_session, username)
     if not user:
         return False
-    if not verify_password(password, user.password):
+    verified = await run_in_threadpool(verify_password, password, user.password)
+    if not verified:
         return False
     return user
 
@@ -82,7 +84,7 @@ def create_token(user: User):
     return encoded_jwt
 
 
-def get_current_user(
+async def get_current_user(
     db_session: Annotated[Session, Depends(get_db)],
     token: Annotated[str, Depends(oauth2_scheme)],
     security_scopes: SecurityScopes
@@ -100,7 +102,7 @@ def get_current_user(
             raise credentials_exception
     except InvalidTokenError:
         raise credentials_exception
-    user = find_user(db_session, username)
+    user = await find_user(db_session, username)
     if user is None:
         raise credentials_exception
     if not any(scope in token_scopes for scope in security_scopes.scopes):
@@ -110,8 +112,8 @@ def get_current_user(
 
 # authenticates user, then creates a token based on supplying the correct username and password
 @router.post("/login", response_model=Token)
-def login(db_session: Annotated[Session, Depends(get_db)], form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
-    user = authenticate_user(db_session, form_data.username, form_data.password)
+async def login(db_session: Annotated[Session, Depends(get_db)], form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+    user = await authenticate_user(db_session, form_data.username, form_data.password)
     if not user:
         logging.warning(f'FAILED LOGIN ATTEMPT at {datetime.now(timezone.utc)} by {form_data.username}')
         raise HTTPException(
@@ -124,21 +126,21 @@ def login(db_session: Annotated[Session, Depends(get_db)], form_data: Annotated[
 
 
 @router.post("/signup")
-def sign_up(db_session: Annotated[Session, Depends(get_db)], user: UserCreate, response: Response):
-    existing_user = find_user(db_session, user.username)
+async def sign_up(db_session: Annotated[Session, Depends(get_db)], user: UserCreate, response: Response):
+    existing_user = await find_user(db_session, user.username)
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="User already exists"
         )
     username = user.username
-    password = get_password_hash(user.password)
+    password = await run_in_threadpool(get_password_hash, user.password)
     stmt = insert(UserTable).values(
         username=username,
         password=password,
         is_admin=False
     )
-    db_session.execute(stmt)
-    db_session.commit()
+    await db_session.execute(stmt)
+    await db_session.commit()
     response.status_code = status.HTTP_201_CREATED
     return { "user": username }

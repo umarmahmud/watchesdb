@@ -16,29 +16,29 @@ router = APIRouter()
 
 
 @router.get("/manufacturers")
-def get_all_manufacturers(db_session: Annotated[Session, Depends(get_db)]) -> List[Manufacturer]:
-    manufacturers = get_all(db_session)
+async def get_all_manufacturers(db_session: Annotated[Session, Depends(get_db)]) -> List[Manufacturer]:
+    manufacturers = await get_all(db_session)
     return manufacturers
 
 
 @router.get("/manufacturers/{manufacturer}")
-def get_manufacturer(db_session: Annotated[Session, Depends(get_db)], manufacturer: str) -> Manufacturer:
+async def get_manufacturer(db_session: Annotated[Session, Depends(get_db)], manufacturer: str) -> Manufacturer:
     try:
-        m = get_one(db_session, manufacturer)
+        m = await get_one(db_session, manufacturer)
         return m
     except NotFoundError as e:
         raise HTTPException(status_code=404, detail=e.args)
 
 
 @router.post("/manufacturers")
-def create_manufacturer(
+async def create_manufacturer(
     db_session: Annotated[Session, Depends(get_db)],
     manufacturer: Manufacturer,
     response: Response,
     user: User = Security(get_current_user, scopes=["admin"])
 ) -> Manufacturer:
     try:
-        create(db_session, manufacturer)
+        await create(db_session, manufacturer)
     except IntegrityError as e:
         raise HTTPException(status_code=409, detail=e.args)
     logging.info(f"Created by admin {user.username} at {datetime.now(timezone.utc)}")
