@@ -1,11 +1,9 @@
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column
+
+from ..db import Base
 
 # sqlalchemy models
-class Base(DeclarativeBase):
-    pass
-
-
 class ManufacturerTable(Base):
     __tablename__ = "manufacturers"
 

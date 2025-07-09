@@ -1,7 +1,11 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
 from config import settings
+
+class Base(DeclarativeBase):
+    pass
+
 
 env = settings.ENV
 user = settings.POSTGRES_USER

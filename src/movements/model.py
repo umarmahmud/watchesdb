@@ -2,7 +2,9 @@ from enum import Enum
 
 from pydantic import BaseModel
 from sqlalchemy import ForeignKey
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column
+
+from ..db import Base
 
 class MovementType(Enum):
     automatic = "automatic"
@@ -11,10 +13,6 @@ class MovementType(Enum):
 
 
 # sqlalchemy models
-class Base(DeclarativeBase):
-    pass
-
-
 class MovementTable(Base):
     __tablename__ = "movements"
 
