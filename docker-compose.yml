@@ -3,14 +3,22 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    env_file:
+      - .env
     ports:
       - "8000:80"
     depends_on:
-      - db
-    deploy:
-      replicas: 1
-      restart_policy:
-        condition: on-failure
+      - db-prod
+    restart: on-failure
+    profiles:
+      - prod
+
+  db-prod:
+    image: postgres:17
+    env_file:
+      - .env
+    volumes:
+      - pgdata_prod:/var/lib/postgresql/data
     profiles:
       - prod
   
@@ -18,33 +26,51 @@ services:
   web-dev:
     build:
       context: .
-      dockerfile: dev.Dockerfile
+      dockerfile: Dockerfile.dev
+    env_file:
+      - .env.dev
     volumes:
       - ./:/app
     ports:
       - "8000:80"
     depends_on:
-      - db
+      - db-dev
     profiles:
       - dev
-  
-  db:
+
+  db-dev:
     image: postgres:17
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DATABASE}
+    env_file:
+      - .env.dev
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata_dev:/var/lib/postgresql/data
     ports:
       - "5432:5432"
-    deploy:
-      replicas: 1
-      restart_policy:
-        condition: on-failure
     profiles:
       - dev
-      - prod
+
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    env_file:
+      - .env.test
+    depends_on:
+      - db-test
+    profiles:
+      - test
+
+  db-test:
+    image: postgres:17
+    env_file:
+      - .env.test
+    volumes:
+      - pgdata_test:/var/lib/postgresql/data
+    profiles:
+      - test
 
 volumes:
-  pgdata:
+  pgdata_prod:
+  pgdata_dev:
+  pgdata_test:
+

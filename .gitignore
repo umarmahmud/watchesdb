@@ -1,6 +1,7 @@
 __pycache__/
 
 .env
+.env.*
 .python-version
 
 *.sql
