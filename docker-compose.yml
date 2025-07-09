@@ -35,6 +35,8 @@ services:
       - "8000:80"
     depends_on:
       - db-dev
+    networks:
+      - shared
     profiles:
       - dev
 
@@ -46,6 +48,8 @@ services:
       - pgdata_dev:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    networks:
+      - shared
     profiles:
       - dev
 
@@ -55,22 +59,14 @@ services:
       dockerfile: Dockerfile.test
     env_file:
       - .env.test
-    depends_on:
-      - db-test
-    profiles:
-      - test
-
-  db-test:
-    image: postgres:17
-    env_file:
-      - .env.test
-    volumes:
-      - pgdata_test:/var/lib/postgresql/data
+    networks:
+      - shared
     profiles:
       - test
 
 volumes:
   pgdata_prod:
   pgdata_dev:
-  pgdata_test:
 
+networks:
+  shared:
