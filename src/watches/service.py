@@ -26,8 +26,8 @@ async def filter_watches(db_session, data):
     # join all remaining aliases on `watch_id`
     for alias in aliases[1:]:
         stmt = stmt.join(alias, alias.watch_id == base_alias.watch_id)
-    results = await db_session.execute(stmt).scalars().all()
-    return results
+    results = await db_session.execute(stmt)
+    return results.scalars().all()
 
 
 # for any given user, we want manufacturer and model of favorited watches, not rows from 'favorites' table
@@ -36,8 +36,8 @@ async def get_all_favorites(db_session, username):
     user_favorites = select(FavoriteWatchTable).where(FavoriteWatchTable.username == username).subquery()
     # do an inner join to get favorited watch manufacturer and model information
     stmt = select(WatchTable.manufacturer, WatchTable.model).join(user_favorites, user_favorites.c.watch_id == WatchTable.watch_id)
-    results = await db_session.execute(stmt).all()
-    response = [{"manufacturer": m, "model": mdl} for m, mdl in results]
+    results = await db_session.execute(stmt)
+    response = [{"manufacturer": m, "model": mdl} for m, mdl in results.all()]
     return response
 
 
