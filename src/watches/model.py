@@ -66,6 +66,5 @@ class FilterWatchQueryParams(BaseModel):
     case_diameter: int | None = None
     crystal: str | None = None
 
-
     class Config:
         extra = "forbid"

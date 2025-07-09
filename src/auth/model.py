@@ -19,7 +19,6 @@ class UserCreate(BaseModel):
     username: str
     password: str
 
-
     class Config:
         extra = "forbid"
 

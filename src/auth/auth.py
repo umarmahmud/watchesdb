@@ -1,5 +1,3 @@
-import os
-from dotenv import load_dotenv
 from typing import Annotated
 from datetime import datetime, timedelta, timezone
 import logging
@@ -16,8 +14,7 @@ from starlette.concurrency import run_in_threadpool
 
 from .model import UserTable, User, Token, UserCreate
 from ..db import get_db
-
-load_dotenv()
+from config import settings
 
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="login",
@@ -27,7 +24,7 @@ oauth2_scheme = OAuth2PasswordBearer(
 password_context = CryptContext(schemes="bcrypt", bcrypt__rounds=12)
 
 # used for encoding and decoding jwt tokens
-secret_key = os.getenv("SECRET")
+secret_key = settings.SECRET
 algorithm = "HS256"
 token_expire_time = 60
 
