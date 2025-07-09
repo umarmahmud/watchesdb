@@ -15,6 +15,9 @@ async def get_all(db_session):
 # filter watches on: manufacturer, case_material, case_diameter, crystal
 async def filter_watches(db_session, data):
     data_dict = {k: data.getlist(k) for k in data.keys()}
+    # type conversion on case_diameter; this is a temporary fix
+    if "case_diameter" in data_dict.keys():
+        data_dict["case_diameter"] = [int(diameter) for diameter in data_dict["case_diameter"]]
     subqueries = []
     for field, values in data_dict.items():
         subqueries.append(select(WatchTable).where(getattr(WatchTable, field).in_(values)).subquery())
