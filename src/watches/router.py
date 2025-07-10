@@ -26,8 +26,11 @@ async def get_all_watches(db_session: Annotated[Session, Depends(get_db)]) -> Li
 async def get_filtered_watches(db_session: Annotated[Session, Depends(get_db)], request: Request) -> List[Watch]:
     if not request.query_params:
         raise HTTPException(status_code=422, detail="No query parameters provided.")
-    res = await filter_watches(db_session, request.query_params)
-    return res
+    try:
+        res = await filter_watches(db_session, request.query_params)
+        return res
+    except ValidationError:
+        raise HTTPException(status_code=422, detail="Extra inputs are not permitted")
 
 
 @router.get("/watches/favorites")

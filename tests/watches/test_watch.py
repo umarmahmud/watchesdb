@@ -38,6 +38,14 @@ async def test_filter_watches_no_params():
 
 
 @pytest.mark.asyncio
+async def test_filter_watches_extra_param():
+    async with AsyncClient(base_url=BASE_URL) as client:
+        response = await client.get("/watches/filter?dial")
+        assert response.status_code == 422
+        assert response.json()["detail"] == "Extra inputs are not permitted"
+
+
+@pytest.mark.asyncio
 async def test_filter_watches_case_diameter_integer():
     async with AsyncClient(base_url=BASE_URL) as client:
         response = await client.get("/watches/filter?case_diameter=40")
