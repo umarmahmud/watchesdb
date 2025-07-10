@@ -18,5 +18,13 @@ app.include_router(auth_router)
 
 @app.get("/")
 async def read_root():
-    return { "msg": "Welcome to WatchesDB!" }
-
+    response = {
+        "message": "Welcome to WatchesDB!",
+        "version": "1.0.0",
+        "description": "This API provides access to watch data including brands, models, movements and trending prices.",
+        "documentation_url": "/docs",
+        "license_info": {
+            "name": "MIT"
+        }
+    }
+    return response
