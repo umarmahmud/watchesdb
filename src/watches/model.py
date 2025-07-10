@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
+from typing import List, Optional
 
 from ..db import Base
 
@@ -59,10 +60,10 @@ class FavoriteWatchGet(BaseModel):
 
 
 class FilterWatchQueryParams(BaseModel):
-    manufacturer: str | None = None
-    case_material: str | None = None
-    case_diameter: int | None = None
-    crystal: str | None = None
+    manufacturer: Optional[List[str]] = None
+    case_material: Optional[List[str]] = None
+    case_diameter: Optional[List[int]] = None
+    crystal: Optional[List[str]] = None
 
     class Config:
         extra = "forbid"

@@ -2,7 +2,7 @@ import logging
 from sqlalchemy import select, insert, delete, and_
 from sqlalchemy.orm import aliased
 
-from .model import WatchTable, WatchCreate, FavoriteWatchTable
+from .model import WatchTable, WatchCreate, FavoriteWatchTable, FilterWatchQueryParams
 from ..exceptions import NotFoundError
 
 
@@ -15,12 +15,16 @@ async def get_all(db_session):
 # filter watches on: manufacturer, case_material, case_diameter, crystal
 async def filter_watches(db_session, data):
     data_dict = {k: data.getlist(k) for k in data.keys()}
-    # type conversion on case_diameter; this is a temporary fix
-    if "case_diameter" in data_dict.keys():
-        data_dict["case_diameter"] = [int(diameter) for diameter in data_dict["case_diameter"]]
+    params = FilterWatchQueryParams(**data_dict)
     subqueries = []
-    for field, values in data_dict.items():
-        subqueries.append(select(WatchTable).where(getattr(WatchTable, field).in_(values)).subquery())
+    if params.manufacturer:
+        subqueries.append(select(WatchTable).where(WatchTable.manufacturer.in_(params.manufacturer)).subquery())
+    if params.case_material:
+        subqueries.append(select(WatchTable).where(WatchTable.case_material.in_(params.case_material)).subquery())
+    if params.case_diameter:
+        subqueries.append(select(WatchTable).where(WatchTable.case_diameter.in_(params.case_diameter)).subquery())
+    if params.crystal:
+        subqueries.append(select(WatchTable).where(WatchTable.crystal.in_(params.crystal)).subquery())
     # alias each subquery so we can refer to them separately
     aliases = [aliased(WatchTable, subq) for subq in subqueries]
     # start building the statement from the first alias
