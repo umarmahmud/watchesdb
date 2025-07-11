@@ -3,7 +3,7 @@ from sqlalchemy import select, insert, delete, and_
 from sqlalchemy.orm import aliased
 
 from .model import WatchTable, WatchCreate, FavoriteWatchTable, FilterWatchQueryParams
-from ..exceptions import NotFoundError
+from ..exceptions import NotFoundError, AlreadyExistsError
 
 
 async def get_all(db_session):
@@ -48,31 +48,44 @@ async def get_all_favorites(db_session, username):
     return response
 
 
-async def toggle_favorites(db_session, username, favorite):
+async def set_as_favorite(db_session, username, favorite):
     stmt = select(FavoriteWatchTable).where(
         and_(FavoriteWatchTable.watch_id == favorite.watch_id,
              FavoriteWatchTable.username == username
         )
     )
     result = await db_session.execute(stmt)
-    # check to see if watch is already favorited and un-favorite it if it already is favorited
-    if result.scalars().first() != None:
-        stmt = delete(FavoriteWatchTable).where(
+    if result.scalars().first() is not None:
+        raise AlreadyExistsError({ "message": "watch is already in favorites" })
+    stmt = insert(FavoriteWatchTable).values(
+        username=username,
+        watch_id=favorite.watch_id
+    )
+    await db_session.execute(stmt)
+    await db_session.commit()
+    logging.info(f'The watch with watch_id {favorite.watch_id} favorited')
+
+
+async def unset_as_favorite(db_session, username, favorite):
+    try:
+        stmt = select(FavoriteWatchTable).where(
             and_(FavoriteWatchTable.watch_id == favorite.watch_id,
-                 FavoriteWatchTable.username == username
+                FavoriteWatchTable.username == username
             )
         )
-        await db_session.execute(stmt)
+        result = await db_session.execute(stmt)
+        favorite_to_delete = result.scalars().first()
+        if favorite_to_delete is None:
+            raise NotFoundError({ "message": "watch to be deleted is not in favorites" })
+        await db_session.delete(favorite_to_delete)
         await db_session.commit()
         logging.info(f'The watch with watch_id {favorite.watch_id} un-favorited')
-    else:
-        stmt = insert(FavoriteWatchTable).values(
-            username=username,
-            watch_id=favorite.watch_id
-        )
-        await db_session.execute(stmt)
-        await db_session.commit()
-        logging.info(f'The watch with watch_id {favorite.watch_id} favorited')
+    except NotFoundError as e:
+        await db_session.rollback()
+        raise e
+    except Exception as e:
+        await db_session.rollback()
+        raise e
 
 
 async def get_one(db_session, id: int):

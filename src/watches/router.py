@@ -8,8 +8,8 @@ from datetime import datetime, timezone
 
 from ..db import get_db
 from .model import WatchCreate, Watch, FavoriteWatch, FavoriteWatchGet, FilterWatchQueryParams
-from .service import get_all, get_one, create, get_all_favorites, toggle_favorites, filter_watches
-from ..exceptions import NotFoundError
+from .service import get_all, get_one, create, get_all_favorites, set_as_favorite, unset_as_favorite, filter_watches
+from ..exceptions import NotFoundError, AlreadyExistsError
 from ..auth.model import User
 from ..auth.auth import get_current_user
 
@@ -59,11 +59,29 @@ async def set_favorites(
     user: User = Security(get_current_user, scopes=["standard", "admin"]),
 ) -> FavoriteWatch:
     try:
-        await toggle_favorites(db_session, user.username, favorite)
+        await set_as_favorite(db_session, user.username, favorite)
     except IntegrityError as e:
         raise HTTPException(status_code=409, detail=e.args)
+    except AlreadyExistsError as already_exists_e:
+        raise HTTPException(status_code=409, detail=already_exists_e.args)
     response.status_code = status.HTTP_201_CREATED
     return favorite
+
+
+@router.delete("/watches/favorites")
+async def unset_favorites(
+    db_session: Annotated[Session, Depends(get_db)],
+    favorite: FavoriteWatch,
+    response: Response,
+    user: User = Security(get_current_user, scopes=["standard", "admin"]),
+) -> FavoriteWatch:
+    try:
+        await unset_as_favorite(db_session, user.username, favorite)
+        return favorite
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=e.args)
+    except Exception as e:
+        raise HTTPException(status_code=500)
 
 
 @router.post("/watches")
