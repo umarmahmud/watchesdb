@@ -37,11 +37,11 @@ async def filter_watches(db_session, data):
     return results.scalars().all()
 
 
-# for any given user, we want manufacturer and model of favorited watches, not rows from 'favorites' table
+# return only manufacturer and model of favorited watches
 async def get_all_favorites(db_session, username):
     # filter 'favorites' table to get rows for user
     user_favorites = select(FavoriteWatchTable).where(FavoriteWatchTable.username == username).subquery()
-    # do an inner join to get favorited watch manufacturer and model information
+    # do an inner join to get favorited watch manufacturer and model
     stmt = select(WatchTable.manufacturer, WatchTable.model).join(user_favorites, user_favorites.c.watch_id == WatchTable.watch_id)
     results = await db_session.execute(stmt)
     response = [{"manufacturer": m, "model": mdl} for m, mdl in results.all()]

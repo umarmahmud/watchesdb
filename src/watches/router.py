@@ -74,10 +74,10 @@ async def unset_favorites(
     favorite: FavoriteWatch,
     response: Response,
     user: User = Security(get_current_user, scopes=["standard", "admin"]),
-) -> FavoriteWatch:
+):
     try:
         await unset_as_favorite(db_session, user.username, favorite)
-        return favorite
+        response.status_code = status.HTTP_204_NO_CONTENT
     except NotFoundError as e:
         raise HTTPException(status_code=404, detail=e.args)
     except Exception as e:
