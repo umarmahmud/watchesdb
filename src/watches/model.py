@@ -11,7 +11,7 @@ class WatchTable(Base):
 
     watch_id: Mapped[int] = mapped_column(primary_key=True)
     manufacturer: Mapped[str] = mapped_column(ForeignKey("manufacturers.manufacturer"))
-    model: Mapped[str]
+    model: Mapped[str] = mapped_column(unique=True)
     movement: Mapped[str] = mapped_column(ForeignKey("movements.movement"))
     case_material: Mapped[str]
     case_diameter: Mapped[int]
