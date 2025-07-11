@@ -7,8 +7,6 @@ env = os.getenv("ENV", default="dev").lower()
 
 if env == "prod":
     load_dotenv(".env")
-elif env == "test":
-    load_dotenv(".env.test")
 else:
     load_dotenv(".env.dev")
 

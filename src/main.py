@@ -1,4 +1,9 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.redis import RedisBackend
+import redis.asyncio as redis
+
 from .watches.router import router as watch_router
 from .manufacturers.router import router as manufacturer_router
 from .movements.router import router as movement_router
@@ -7,7 +12,17 @@ from .logger import configure_logging
 
 configure_logging()
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    redis_client = redis.Redis(host="redis", port=6379, decode_responses=True)
+    FastAPICache.init(RedisBackend(redis_client), prefix="fastapi-cache")
+    
+    yield
+
+    await redis_client.close()
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 app.include_router(watch_router)

@@ -18,8 +18,19 @@ services:
     env_file:
       - .env
     volumes:
-      - pgdata_prod:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
     profiles:
+      - prod
+
+  redis:
+    image: redis:7
+    container_name: redis
+    restart: always
+    networks:
+      - shared-dev
+      - shared-prod
+    profiles:
+      - dev
       - prod
   
   # dev environment with live-reload
@@ -36,7 +47,7 @@ services:
     depends_on:
       - db-dev
     networks:
-      - shared
+      - shared-dev
     profiles:
       - dev
 
@@ -45,11 +56,11 @@ services:
     env_file:
       - .env.dev
     volumes:
-      - pgdata_dev:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     networks:
-      - shared
+      - shared-dev
     profiles:
       - dev
 
@@ -57,16 +68,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.test
-    env_file:
-      - .env.test
     networks:
-      - shared
+      - shared-dev
     profiles:
       - test
 
 volumes:
-  pgdata_prod:
-  pgdata_dev:
+  pgdata:
 
 networks:
-  shared:
+  shared-dev:
+  shared-prod:

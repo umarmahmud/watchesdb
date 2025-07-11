@@ -4,6 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from typing import Annotated, List
 import logging
 from datetime import datetime, timezone
+from fastapi_cache.decorator import cache
 
 from ..db import get_db
 from .model import Movement
@@ -16,12 +17,14 @@ router = APIRouter()
 
 
 @router.get("/movements")
+@cache(expire=300)
 async def get_all_movements(db_session: Annotated[Session, Depends(get_db)]) -> List[Movement]:
     watches = await get_all(db_session)
     return watches
 
 
 @router.get("/movements/{movement}")
+@cache(expire=300)
 async def get_movement(db_session: Annotated[Session, Depends(get_db)], movement: str) -> Movement:
     try:
         m = await get_one(db_session, movement)

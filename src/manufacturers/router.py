@@ -4,6 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from typing import Annotated, List
 import logging
 from datetime import datetime, timezone
+from fastapi_cache.decorator import cache
 
 from ..db import get_db
 from .model import Manufacturer
@@ -16,12 +17,14 @@ router = APIRouter()
 
 
 @router.get("/manufacturers")
+@cache(expire=300)
 async def get_all_manufacturers(db_session: Annotated[Session, Depends(get_db)]) -> List[Manufacturer]:
     manufacturers = await get_all(db_session)
     return manufacturers
 
 
 @router.get("/manufacturers/{manufacturer}")
+@cache(expire=300)
 async def get_manufacturer(db_session: Annotated[Session, Depends(get_db)], manufacturer: str) -> Manufacturer:
     try:
         m = await get_one(db_session, manufacturer)

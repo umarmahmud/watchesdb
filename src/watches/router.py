@@ -5,6 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from typing import Annotated, List
 import logging
 from datetime import datetime, timezone
+from fastapi_cache.decorator import cache
 
 from ..db import get_db
 from .model import WatchCreate, Watch, FavoriteWatch, FavoriteWatchGet, FilterWatchQueryParams
@@ -17,12 +18,14 @@ router = APIRouter()
 
 
 @router.get("/watches")
+@cache(expire=300)
 async def get_all_watches(db_session: Annotated[Session, Depends(get_db)]) -> List[Watch]:
     watches = await get_all(db_session)
     return watches
 
 
 @router.get("/watches/filter")
+@cache(expire=300)
 async def get_filtered_watches(db_session: Annotated[Session, Depends(get_db)], request: Request) -> List[Watch]:
     if not request.query_params:
         raise HTTPException(status_code=422, detail="No query parameters provided.")
@@ -43,6 +46,7 @@ async def get_favorites(
 
 
 @router.get("/watches/{id}")
+@cache(expire=300)
 async def get_watch(db_session: Annotated[Session, Depends(get_db)], id: int) -> Watch:
     try:
         watch = await get_one(db_session, id)
