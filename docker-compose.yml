@@ -10,8 +10,28 @@ services:
     depends_on:
       - db-prod
     restart: on-failure
+    networks:
+      - shared-prod
+      - prod-proxy
     profiles:
       - prod
+
+  nginx:
+      image: nginx:latest
+      container_name: nginx
+      ports:
+        - "80:80"
+        - "443:443"
+      volumes:
+        - ./nginx.conf:/etc/nginx/nginx.conf:ro
+        - /etc/letsencrypt/live/example.com/fullchain.pem:/etc/letsencrypt/live/example.com/fullchain.pem
+        - /etc/letsencrypt/live/example.com/privkey.pem:/etc/letsencrypt/live/example.com/privkey.pem
+      depends_on:
+        - web-prod
+      networks:
+        - prod-proxy
+      profiles:
+        - prod
 
   db-prod:
     image: postgres:17
@@ -19,6 +39,8 @@ services:
       - .env
     volumes:
       - pgdata:/var/lib/postgresql/data
+    networks:
+      - shared-prod
     profiles:
       - prod
 
@@ -79,3 +101,4 @@ volumes:
 networks:
   shared-dev:
   shared-prod:
+  prod-proxy:
